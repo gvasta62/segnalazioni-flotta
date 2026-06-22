@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Segnalazione anomalia — Flotta Freccialink &amp; The Mall</title>
+<style>
+  :root{
+    --fs-red:#a3173b; --fs-red-dark:#7d0f2c; --ink:#1f2430; --muted:#6b7280;
+    --line:#d9dde3; --ok:#1e8e4e; --bad:#c0392b; --bg:#f4f5f7; --card:#ffffff;
+  }
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;
+       background:var(--bg);color:var(--ink);}
+  header{background:linear-gradient(135deg,var(--fs-red),var(--fs-red-dark));
+         color:#fff;padding:22px 18px;text-align:center;}
+  header .title{font-size:20px;font-weight:700;letter-spacing:.2px}
+  header .sub{font-size:13px;opacity:.9;margin-top:4px}
+  .wrap{max-width:560px;margin:0 auto;padding:18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+        padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.05);margin-bottom:16px}
+  label.fld{display:block;margin-bottom:14px}
+  label.fld > span.lbl{display:block;font-size:14px;font-weight:600;margin-bottom:6px}
+  label.fld > span.req{color:var(--fs-red)}
+  .hintline{font-size:12px;color:var(--muted);margin:-2px 0 6px}
+  input[type=text],input[type=email],textarea,select{
+    width:100%;padding:12px;font-size:16px;border:1.5px solid var(--line);
+    border-radius:10px;background:#fff;color:var(--ink);font-family:inherit}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--fs-red)}
+  input[readonly]{background:#f0f1f3;color:#444}
+  textarea{min-height:96px;resize:vertical}
+  .seg{display:flex;gap:10px}
+  .seg label{flex:1;border:1.5px solid var(--line);border-radius:10px;
+             padding:11px 8px;text-align:center;font-size:14px;cursor:pointer;
+             background:#fff;user-select:none}
+  .seg input{position:absolute;opacity:0;width:0;height:0}
+  .seg label.on-ok{border-color:var(--ok);background:#e9f7ee;color:var(--ok);font-weight:600}
+  .seg label.on-bad{border-color:var(--bad);background:#fdecec;color:var(--bad);font-weight:600}
+  .filebox{border:1.5px dashed var(--line);border-radius:10px;padding:14px;text-align:center;background:#fafbfc}
+  .filebox input{font-size:14px}
+  #fileList{font-size:13px;color:var(--muted);margin-top:8px;text-align:left}
+  .btn{display:block;width:100%;padding:16px;border:0;border-radius:12px;
+       background:var(--fs-red);color:#fff;font-size:17px;font-weight:700;cursor:pointer}
+  .btn:disabled{opacity:.55;cursor:default}
+  .note{font-size:12px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.5}
+  .hp{position:absolute;left:-9999px;top:-9999px}
+</style>
+</head>
+<body>
+  <header>
+    <div class="title">🚍 Segnalazione anomalia / guasto</div>
+    <div class="sub">Flotta Freccialink &amp; The Mall</div>
+  </header>
+
+  <div class="wrap">
+    <form id="segForm" action="https://formsubmit.co/g.vasta@fsbusitalia.it"
+          method="POST" enctype="multipart/form-data">
+
+      <!-- ===== Campi tecnici FormSubmit (non visibili) ===== -->
+      <input type="hidden" name="_subject" id="_subject" value="Segnalazione anomalia flotta">
+      <input type="hidden" name="_cc" value="r.ocello@fsbusitalia.it">
+      <input type="hidden" name="_template" value="table">
+      <input type="hidden" name="_captcha" value="false">
+      <input type="hidden" name="_autoresponse" id="_autoresponse" value="">
+      <input type="hidden" name="_next" value="https://gvasta62.github.io/segnalazioni-flotta/grazie.html">
+      <!-- honeypot anti-spam -->
+      <input type="text" name="_honey" class="hp" tabindex="-1" autocomplete="off">
+
+      <div class="card">
+        <label class="fld">
+          <span class="lbl">Data e ora della segnalazione</span>
+          <input type="text" name="Data e ora" id="datetime" readonly>
+        </label>
+
+        <label class="fld">
+          <span class="lbl">Flotta <span class="req">*</span></span>
+          <select name="Flotta" required>
+            <option value="" disabled selected>— Seleziona —</option>
+            <option value="Freccialink">Freccialink</option>
+            <option value="The Mall">The Mall</option>
+          </select>
+        </label>
+
+        <label class="fld">
+          <span class="lbl">Numero sociale del mezzo <span class="req">*</span></span>
+          <input type="text" name="Numero sociale" inputmode="numeric"
+                 placeholder="es. 14025" autocomplete="off" required>
+        </label>
+
+        <label class="fld">
+          <span class="lbl">Dove è possibile intercettare il mezzo <span class="req">*</span></span>
+          <div class="hintline">Linea, deposito, città o ultima posizione nota</div>
+          <input type="text" name="Dove intercettare il mezzo"
+                 placeholder="es. Linea Firenze–Outlet, deposito di Osmannoro…" required>
+        </label>
+
+        <label class="fld">
+          <span class="lbl">La tua email (segnalatore) <span class="req">*</span></span>
+          <div class="hintline">Riceverai una copia di riepilogo della segnalazione</div>
+          <input type="email" name="email" placeholder="nome.cognome@fsbusitalia.it" required>
+        </label>
+      </div>
+
+      <div class="card">
+        <label class="fld">
+          <span class="lbl">Descrizione dell'anomalia <span class="req">*</span></span>
+          <textarea name="Descrizione anomalia"
+            placeholder="Descrivi il guasto o l'anomalia riscontrata…" required></textarea>
+        </label>
+
+        <label class="fld">
+          <span class="lbl">WiFi di bordo</span>
+          <div class="seg" id="seg-wifi">
+            <label><input type="radio" name="WiFi" value="Funzionante">Funzionante</label>
+            <label><input type="radio" name="WiFi" value="NON funzionante">Non funzionante</label>
+          </div>
+        </label>
+
+        <label class="fld">
+          <span class="lbl">Sistema video di bordo</span>
+          <div class="seg" id="seg-video">
+            <label><input type="radio" name="Sistema video" value="Funzionante">Funzionante</label>
+            <label><input type="radio" name="Sistema video" value="NON funzionante">Non funzionante</label>
+          </div>
+        </label>
+
+        <label class="fld" style="margin-bottom:0">
+          <span class="lbl">Allegati (foto dell'anomalia)</span>
+          <div class="hintline">Puoi caricare una o più foto. Vengono ottimizzate automaticamente.</div>
+          <div class="filebox">
+            <input type="file" name="attachment" id="files" accept="image/*" multiple>
+            <div id="fileList"></div>
+          </div>
+        </label>
+      </div>
+
+      <button type="submit" class="btn" id="sendBtn">Invia segnalazione</button>
+
+      <div class="note">
+        La segnalazione verrà inviata a <b>g.vasta@fsbusitalia.it</b> e
+        <b>r.ocello@fsbusitalia.it</b>; una copia di riepilogo arriverà alla tua email.
+      </div>
+    </form>
+  </div>
+
+<script>
+  // ---------- Data/ora automatica ----------
+  const now = new Date();
+  const tsHuman = now.toLocaleString("it-IT",{
+    day:"2-digit",month:"2-digit",year:"numeric",
+    hour:"2-digit",minute:"2-digit",second:"2-digit"
+  });
+  document.getElementById("datetime").value = tsHuman;
+
+  // ---------- Feedback visivo flag Sì/No ----------
+  function wireSeg(boxId){
+    const box=document.getElementById(boxId);
+    box.addEventListener("change",()=>{
+      box.querySelectorAll("label").forEach(l=>{l.classList.remove("on-ok","on-bad")});
+      const sel=box.querySelector("input:checked");
+      if(!sel) return;
+      const lbl=sel.closest("label");
+      lbl.classList.add(sel.value.startsWith("NON")?"on-bad":"on-ok");
+    });
+  }
+  wireSeg("seg-wifi"); wireSeg("seg-video");
+
+  // ---------- Elenco file selezionati ----------
+  const fileInput=document.getElementById("files");
+  const fileList=document.getElementById("fileList");
+  fileInput.addEventListener("change",()=>renderFileList(fileInput.files));
+  function renderFileList(files){
+    if(!files||!files.length){fileList.textContent="";return;}
+    const names=[...files].map(f=>"• "+f.name+" ("+Math.round(f.size/1024)+" KB)");
+    fileList.innerHTML=names.join("<br>");
+  }
+
+  // ---------- Compressione immagini lato browser ----------
+  const MAX_SIDE=1600, JPEG_Q=0.72;
+  function compressImage(file){
+    return new Promise((resolve)=>{
+      if(!file.type.startsWith("image/")){resolve(file);return;}
+      const img=new Image();
+      const url=URL.createObjectURL(file);
+      img.onload=()=>{
+        let{width:w,height:h}=img;
+        if(Math.max(w,h)>MAX_SIDE){
+          const s=MAX_SIDE/Math.max(w,h); w=Math.round(w*s); h=Math.round(h*s);
+        }
+        const c=document.createElement("canvas"); c.width=w; c.height=h;
+        c.getContext("2d").drawImage(img,0,0,w,h);
+        URL.revokeObjectURL(url);
+        c.toBlob((blob)=>{
+          if(!blob||blob.size>=file.size){resolve(file);return;} // se non migliora, tieni l'originale
+          const nf=new File([blob],file.name.replace(/\.(png|webp|heic|heif)$/i,".jpg"),
+                            {type:"image/jpeg",lastModified:Date.now()});
+          resolve(nf);
+        },"image/jpeg",JPEG_Q);
+      };
+      img.onerror=()=>{URL.revokeObjectURL(url);resolve(file);};
+      img.src=url;
+    });
+  }
+
+  // ---------- Costruzione riepilogo per l'autoresponse ----------
+  function buildRecap(){
+    const v=(n)=>{const el=document.querySelector(`[name="${n}"]`);return el?el.value:"";};
+    const r=(n)=>{const el=document.querySelector(`[name="${n}"]:checked`);return el?el.value:"non indicato";};
+    return [
+      "Abbiamo ricevuto la tua segnalazione. Riepilogo:",
+      "",
+      "Data e ora: "+v("Data e ora"),
+      "Flotta: "+v("Flotta"),
+      "Numero sociale: "+v("Numero sociale"),
+      "Dove intercettarlo: "+v("Dove intercettare il mezzo"),
+      "WiFi: "+r("WiFi"),
+      "Sistema video: "+r("Sistema video"),
+      "",
+      "Descrizione anomalia:",
+      v("Descrizione anomalia"),
+      "",
+      "Grazie per la collaborazione.",
+      "— Segnalazione Flotta Freccialink & The Mall"
+    ].join("\n");
+  }
+
+  // ---------- Submit: comprime, prepara campi, invia (POST classico) ----------
+  const form=document.getElementById("segForm");
+  const sendBtn=document.getElementById("sendBtn");
+  let submitting=false;
+
+  form.addEventListener("submit", async (e)=>{
+    if(submitting) return;            // evita doppio invio
+    e.preventDefault();
+    if(!form.reportValidity()) return;
+
+    submitting=true;
+    sendBtn.disabled=true;
+    sendBtn.textContent="Invio in corso…";
+
+    // Oggetto dinamico
+    const flotta=document.querySelector('[name="Flotta"]').value;
+    const ns=document.querySelector('[name="Numero sociale"]').value;
+    document.getElementById("_subject").value=`Segnalazione anomalia ${flotta} — mezzo ${ns}`;
+    document.getElementById("_autoresponse").value=buildRecap();
+
+    // Compressione immagini
+    try{
+      const files=[...fileInput.files];
+      if(files.length){
+        const out=await Promise.all(files.map(compressImage));
+        const dt=new DataTransfer();
+        out.forEach(f=>dt.items.add(f));
+        fileInput.files=dt.files;
+        const total=[...fileInput.files].reduce((a,f)=>a+f.size,0);
+        if(total>9.5*1024*1024){
+          alert("Le foto allegate superano ~10MB anche dopo l'ottimizzazione. "+
+                "Rimuovine qualcuna e riprova.");
+          submitting=false; sendBtn.disabled=false; sendBtn.textContent="Invia segnalazione";
+          return;
+        }
+      }
+    }catch(err){ /* in caso di errore di compressione, invio comunque gli originali */ }
+
+    form.submit();   // invio classico: necessario per allegati + autoresponse
+  });
+</script>
+</body>
+</html>
