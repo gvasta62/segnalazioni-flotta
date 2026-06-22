@@ -3,7 +3,7 @@ const fs = require('fs');
 const {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   Header, Footer, AlignmentType, LevelFormat, HeadingLevel, BorderStyle,
-  WidthType, ShadingType, VerticalAlign, PageNumber, ImageRun, ExternalHyperlink
+  WidthType, ShadingType, VerticalAlign, PageNumber, ImageRun, ExternalHyperlink, PageBreak
 } = require('docx');
 
 const RED = 'A3173B', DARK = '7D0F2C', INK = '1F2430', GREY = '6B7280';
@@ -66,6 +66,19 @@ const doc = new Document({
       children:[ new TextRun({ text:'Segnalazione Anomalie Flotta Freccialink & The Mall  —  pag. ', size:16, color:GREY }),
                  new TextRun({ children:[PageNumber.CURRENT], size:16, color:GREY }) ] }) ] }) },
     children: [
+      // ---- COPERTINA ----
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:500, after:260},
+        children:[ new ImageRun({ type:'png', data: fs.readFileSync('logo-busitalia.png'),
+          transformation:{ width:300, height:96 },
+          altText:{ title:'Busitalia', description:'Logo Busitalia', name:'Logo' } }) ] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing:{after:120},
+        children:[ new ImageRun({ type:'png', data: fs.readFileSync('infografica-progetto-orizzontale.png'),
+          transformation:{ width:600, height:338 },
+          altText:{ title:'Infografica', description:'Infografica del progetto', name:'Infografica' } }) ] }),
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing:{before:160},
+        children:[ new TextRun({ text:'Documento illustrativo del progetto', italics:true, color:GREY, size:24 }) ] }),
+      new Paragraph({ children:[ new PageBreak() ] }),
+      // ---- CONTENUTO ----
       new Paragraph({ style:'Title', children:[new TextRun('Portale Segnalazione Anomalie/Guasti')] }),
       new Paragraph({ spacing:{after:40}, children:[new TextRun({ text:'Flotta Freccialink & The Mall', size:26, bold:true, color:RED })] }),
       new Paragraph({ spacing:{after:200}, border:{ bottom:{ style:BorderStyle.SINGLE, size:10, color:RED, space:6 } },
