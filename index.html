@@ -154,6 +154,23 @@
   });
   document.getElementById("datetime").value = tsHuman;
 
+  // ---------- Caricamento dinamico delle flotte (JSONP) ----------
+  function popolaFlotte(list){
+    if(!Array.isArray(list) || !list.length) return;
+    const sel=document.getElementById("flotta");
+    sel.innerHTML='<option value="" disabled selected>— Seleziona —</option>';
+    list.forEach(f=>{ const o=document.createElement("option"); o.value=f; o.textContent=f; sel.appendChild(o); });
+  }
+  (function loadFlotte(){
+    if(SCRIPT_URL.indexOf("INCOLLA_QUI")===0) return;   // backend non configurato
+    const cb="__flotteCb_"+Date.now();
+    window[cb]=function(list){ try{ popolaFlotte(list); }catch(e){} delete window[cb]; };
+    const s=document.createElement("script");
+    s.src=SCRIPT_URL+(SCRIPT_URL.indexOf("?")<0?"?":"&")+"action=flotte&callback="+cb;
+    s.onerror=function(){ delete window[cb]; };  // in caso di errore restano le flotte fisse
+    document.head.appendChild(s);
+  })();
+
   // ---------- Feedback visivo flag Sì/No ----------
   function wireSeg(boxId){
     const box=document.getElementById(boxId);

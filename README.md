@@ -23,6 +23,17 @@ e copia di riepilogo al segnalatore).
    **descrizione lavorazione**.
 3. **Chiuso** — quando premi *Chiudi*: registra **data conclusione** + **riepilogo intervento**.
 
+Ad ogni cambio di stato (presa in carico e chiusura) parte una **email di aggiornamento**
+al segnalatore, a g.vasta@fsbusitalia.it e a r.ocello@fsbusitalia.it.
+
+## Gestione flotte
+Le flotte del menu a tendina sono nel foglio **"Flotte"** e si gestiscono dal pannello
+(scheda **🚌 Flotte**): aggiungi/rimuovi una flotta e il form pubblico si aggiorna da solo.
+
+## QR code
+- `qr-form-segnalazioni.png` — QR semplice che apre il form.
+- `volantino-qr-segnalazioni.png` — volantino A4 stampabile con QR e istruzioni.
+
 ## Statistiche (nel pannello)
 - Conteggi totali per stato (pending / in lavorazione / chiuse).
 - Segnalazioni di **questa settimana / questo mese / quest'anno** con **tempo medio di

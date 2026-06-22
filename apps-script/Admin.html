@@ -68,11 +68,13 @@
       <div class="tab active" data-f="aperte" onclick="setTab('aperte')">Da lavorare</div>
       <div class="tab" data-f="tutte" onclick="setTab('tutte')">Tutte</div>
       <div class="tab" data-f="stat" onclick="setTab('stat')">📊 Statistiche</div>
+      <div class="tab" data-f="flotte" onclick="setTab('flotte')">🚌 Flotte</div>
       <div class="tab" onclick="ricarica()" style="margin-left:auto">↻ Aggiorna</div>
     </div>
 
     <div id="list"><div class="loading">Caricamento…</div></div>
     <div id="statView" style="display:none"></div>
+    <div id="flotteView" style="display:none"></div>
   </div>
 
   <!-- modal -->
@@ -105,9 +107,12 @@
     document.querySelectorAll('.tab[data-f]').forEach(function(el){
       el.classList.toggle('active', el.getAttribute('data-f')===t);
     });
+    document.getElementById('statView').style.display='none';
+    document.getElementById('flotteView').style.display='none';
+    document.getElementById('list').style.display='none';
     if(t==='stat'){ renderStat(); }
-    else { document.getElementById('statView').style.display='none';
-           document.getElementById('list').style.display='block'; render(); }
+    else if(t==='flotte'){ renderFlotte(); }
+    else { document.getElementById('list').style.display='block'; render(); }
   }
 
   function render(){
@@ -223,6 +228,44 @@
   function statCard(n,l,t){
     return '<div class="stat"><div class="n">'+n+'</div><div class="l">'+l+'</div>'
          + (t?'<div class="t">'+t+'</div>':'')+'</div>';
+  }
+
+  // ---- flotte ----
+  function renderFlotte(){
+    var fv=document.getElementById('flotteView');
+    fv.style.display='block';
+    fv.innerHTML='<div class="loading">Caricamento flotte…</div>';
+    google.script.run.withSuccessHandler(function(list){
+      var rows=(list||[]).map(function(f){
+        return '<tr><td>'+esc(f)+'</td><td style="text-align:right">'
+          +'<button class="act" style="background:#c0392b" onclick="rimuoviFlotta(\''+esc(f).replace(/\'/g,"\\\'")+'\')">Rimuovi</button>'
+          +'</td></tr>';
+      }).join('');
+      fv.innerHTML='<div class="card" style="max-width:560px">'
+        +'<h3 style="margin:0 0 4px;color:#7d0f2c">Flotte del pulldown</h3>'
+        +'<p style="font-size:13px;color:#6b7280;margin:0 0 12px">Le flotte qui elencate compaiono nel menu a tendina del form pubblico.</p>'
+        +'<div style="display:flex;gap:8px;margin-bottom:14px">'
+        +'<input id="nuovaFlotta" type="text" placeholder="Nuova flotta…" '
+        +'style="flex:1;padding:10px;border:1.5px solid #e2e5ea;border-radius:9px;font-size:15px" '
+        +'onkeydown="if(event.key===\'Enter\')aggiungiFlotta()">'
+        +'<button class="act a-take" style="background:#1e8e4e" onclick="aggiungiFlotta()">Aggiungi</button></div>'
+        +'<table><thead><tr><th>Flotta</th><th></th></tr></thead><tbody>'
+        +(rows||'<tr><td colspan="2" style="color:#6b7280">Nessuna flotta</td></tr>')
+        +'</tbody></table></div>';
+    }).withFailureHandler(function(e){ fv.innerHTML='<div class="empty">Errore: '+e.message+'</div>'; })
+      .getFlotte();
+  }
+  function aggiungiFlotta(){
+    var inp=document.getElementById('nuovaFlotta'); var nome=(inp.value||'').trim();
+    if(!nome){ inp.focus(); return; }
+    toast('Salvataggio…');
+    google.script.run.withSuccessHandler(function(){ toast('Flotta aggiunta'); renderFlotte(); })
+      .withFailureHandler(function(e){ toast('Errore: '+e.message); }).addFlotta(nome);
+  }
+  function rimuoviFlotta(nome){
+    toast('Rimozione…');
+    google.script.run.withSuccessHandler(function(){ toast('Flotta rimossa'); renderFlotte(); })
+      .withFailureHandler(function(e){ toast('Errore: '+e.message); }).eliminaFlotta(nome);
   }
 
   // ---- toast ----

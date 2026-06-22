@@ -25,8 +25,12 @@ const CONFIG = {
   REPLY_TO:      'g.vasta@fsbusitalia.it',     // a chi risponde il segnalatore
   MITTENTE_NOME: 'Segnalazioni Flotta',
   SHEET_NAME:    'Segnalazioni',
+  SHEET_FLOTTE:  'Flotte',
   DRIVE_FOLDER:  'Segnalazioni Flotta - Allegati'
 };
+
+// Flotte di partenza (usate solo se il foglio "Flotte" è vuoto)
+const DEFAULT_FLOTTE = ['Freccialink', 'The Mall'];
 
 const STATI = { PENDING: 'Pending', LAVORAZIONE: 'In lavorazione', CHIUSO: 'Chiuso' };
 
@@ -46,6 +50,7 @@ const COL = {
 /** Esegui UNA volta dall'editor per creare il foglio e l'intestazione. */
 function setup() {
   const sh = getSheet_();
+  getSheetFlotte_();
   SpreadsheetApp.flush();
   Logger.log('Foglio pronto: ' + sh.getName());
 }
@@ -63,8 +68,73 @@ function getSheet_() {
   return sh;
 }
 
+// =============================== FLOTTE =====================================
+/** Foglio "Flotte" (col A = nome). Lo crea con i default se manca/è vuoto. */
+function getSheetFlotte_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(CONFIG.SHEET_FLOTTE);
+  if (!sh) sh = ss.insertSheet(CONFIG.SHEET_FLOTTE);
+  if (sh.getLastRow() === 0) {
+    sh.getRange(1, 1).setValue('Flotta').setFontWeight('bold')
+      .setBackground('#a3173b').setFontColor('#ffffff');
+    sh.setFrozenRows(1);
+    sh.getRange(2, 1, DEFAULT_FLOTTE.length, 1)
+      .setValues(DEFAULT_FLOTTE.map(function (f) { return [f]; }));
+  }
+  return sh;
+}
+
+/** Elenco nomi flotte (array di stringhe). */
+function leggiFlotte_() {
+  const sh = getSheetFlotte_();
+  const last = sh.getLastRow();
+  if (last < 2) return DEFAULT_FLOTTE.slice();
+  return sh.getRange(2, 1, last - 1, 1).getValues()
+    .map(function (r) { return str_(r[0]).trim(); })
+    .filter(function (v) { return v; });
+}
+
+/** (admin) Elenco flotte per il pannello. */
+function getFlotte() { assertAdmin_(); return leggiFlotte_(); }
+
+/** (admin) Aggiunge una flotta (se non già presente). */
+function addFlotta(nome) {
+  assertAdmin_();
+  nome = str_(nome).trim();
+  if (!nome) throw new Error('Nome flotta vuoto.');
+  const attuali = leggiFlotte_().map(function (f) { return f.toLowerCase(); });
+  if (attuali.indexOf(nome.toLowerCase()) >= 0) throw new Error('Flotta già presente.');
+  getSheetFlotte_().appendRow([nome]);
+  return leggiFlotte_();
+}
+
+/** (admin) Rimuove una flotta. */
+function eliminaFlotta(nome) {
+  assertAdmin_();
+  nome = str_(nome).trim().toLowerCase();
+  const sh = getSheetFlotte_();
+  const last = sh.getLastRow();
+  for (var r = last; r >= 2; r--) {
+    if (str_(sh.getRange(r, 1).getValue()).trim().toLowerCase() === nome) {
+      sh.deleteRow(r);
+    }
+  }
+  return leggiFlotte_();
+}
+
 // =============================== ENDPOINT WEB ===============================
 function doGet(e) {
+  // Endpoint pubblico per l'elenco flotte (usato dal form via JSONP).
+  if (e && e.parameter && e.parameter.action === 'flotte') {
+    const lista = leggiFlotte_();
+    const cb = e.parameter.callback;
+    if (cb) {
+      return ContentService.createTextOutput(cb + '(' + JSON.stringify(lista) + ')')
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return jsonOut_(lista);
+  }
+
   // Sul deployment "Admin" (accesso solo a te) l'utente attivo è la tua email.
   // Sul deployment "Pubblico" (accesso a chiunque) è vuota -> niente pannello.
   const user = (Session.getActiveUser().getEmail() || '').toLowerCase();
@@ -225,6 +295,8 @@ function prendiInCarico(id, descrizione) {
   sh.getRange(row, COL.STATO).setValue(STATI.LAVORAZIONE);
   if (!sh.getRange(row, COL.DATA_PIC).getValue()) sh.getRange(row, COL.DATA_PIC).setValue(new Date());
   sh.getRange(row, COL.DESCR_LAV).setValue(descrizione || '');
+  SpreadsheetApp.flush();
+  inviaAggiornamentoStato_(sh, row, STATI.LAVORAZIONE);
   return { ok: true };
 }
 
@@ -239,7 +311,59 @@ function chiudiSegnalazione(id, riepilogo) {
   sh.getRange(row, COL.STATO).setValue(STATI.CHIUSO);
   sh.getRange(row, COL.DATA_FINE).setValue(new Date());
   sh.getRange(row, COL.RIEPILOGO).setValue(riepilogo || '');
+  SpreadsheetApp.flush();
+  inviaAggiornamentoStato_(sh, row, STATI.CHIUSO);
   return { ok: true };
+}
+
+/** Email di aggiornamento stato a segnalatore + g.vasta + r.ocello. */
+function inviaAggiornamentoStato_(sh, row, nuovoStato) {
+  const tz = Session.getScriptTimeZone();
+  const v = sh.getRange(row, 1, 1, HEADERS.length).getValues()[0];
+  const fmt = function (d) { return d instanceof Date ? Utilities.formatDate(d, tz, 'dd/MM/yyyy HH:mm') : str_(d); };
+
+  const segnalatore = str_(v[COL.EMAIL - 1]);
+  const ns = str_(v[COL.NS - 1]);
+  const flotta = str_(v[COL.FLOTTA - 1]);
+  const chiuso = (nuovoStato === STATI.CHIUSO);
+
+  const righe = [
+    ['Stato', nuovoStato],
+    ['Flotta', flotta],
+    ['Numero sociale', ns],
+    ['Segnalazione del', fmt(v[COL.DATA - 1])],
+    ['Descrizione anomalia', str_(v[COL.DESCR - 1])],
+    ['Presa in carico il', fmt(v[COL.DATA_PIC - 1])]
+  ];
+  if (str_(v[COL.DESCR_LAV - 1])) righe.push(['Note lavorazione', str_(v[COL.DESCR_LAV - 1])]);
+  if (chiuso) {
+    righe.push(['Conclusa il', fmt(v[COL.DATA_FINE - 1])]);
+    if (str_(v[COL.RIEPILOGO - 1])) righe.push(['Riepilogo intervento', str_(v[COL.RIEPILOGO - 1])]);
+  }
+
+  const titolo = chiuso ? 'Segnalazione CHIUSA' : 'Segnalazione PRESA IN CARICO';
+  const oggetto = (chiuso ? '✅ ' : '🔧 ') + 'Aggiornamento segnalazione ' + flotta + ' — mezzo ' + ns
+                + ' (' + nuovoStato + ')';
+
+  let html = '<div style="font-family:Arial,sans-serif;color:#1f2430">'
+    + '<h2 style="color:#a3173b;margin:0 0 10px">' + titolo + '</h2>'
+    + '<table cellpadding="8" cellspacing="0" style="border-collapse:collapse;font-size:14px">';
+  righe.forEach(function (r) {
+    html += '<tr>'
+      + '<td style="background:#f4f5f7;border:1px solid #e2e5ea;font-weight:bold;white-space:nowrap">' + r[0] + '</td>'
+      + '<td style="border:1px solid #e2e5ea">' + escapeHtml_(r[1]) + '</td></tr>';
+  });
+  html += '</table></div>';
+
+  // destinatari: g.vasta (TO) + r.ocello e segnalatore (CC)
+  const cc = [CONFIG.DEST_CC];
+  if (segnalatore && /\S+@\S+\.\S+/.test(segnalatore)) cc.push(segnalatore);
+  GmailApp.sendEmail(CONFIG.DEST_TO, oggetto, plainText_(righe, ''), {
+    name: CONFIG.MITTENTE_NOME,
+    replyTo: CONFIG.REPLY_TO,
+    cc: cc.join(','),
+    htmlBody: html
+  });
 }
 
 // ============================== STATISTICHE ================================
