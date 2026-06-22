@@ -30,12 +30,16 @@
   input[readonly]{background:#f0f1f3;color:#444}
   textarea{min-height:96px;resize:vertical}
   .seg{display:flex;gap:10px}
-  .seg label{flex:1;border:1.5px solid var(--line);border-radius:10px;
+  .seg label{flex:1;border:2px solid var(--line);border-radius:10px;
              padding:11px 8px;text-align:center;font-size:14px;cursor:pointer;
-             background:#fff;user-select:none}
+             background:#fff;user-select:none;font-weight:700}
   .seg input{position:absolute;opacity:0;width:0;height:0}
-  .seg label.on-ok{border-color:var(--ok);background:#e9f7ee;color:var(--ok);font-weight:600}
-  .seg label.on-bad{border-color:var(--bad);background:#fdecec;color:var(--bad);font-weight:600}
+  /* colori fissi: Funzionante = verde grassetto, Non funzionante = rosso grassetto */
+  .seg label.ok{border-color:var(--ok);color:var(--ok)}
+  .seg label.no{border-color:var(--bad);color:var(--bad)}
+  /* stato selezionato: riempimento pieno per dare feedback */
+  .seg label.ok.sel{background:var(--ok);color:#fff}
+  .seg label.no.sel{background:var(--bad);color:#fff}
   .filebox{border:1.5px dashed var(--line);border-radius:10px;padding:14px;text-align:center;background:#fafbfc}
   .filebox input{font-size:14px}
   #fileList{font-size:13px;color:var(--muted);margin-top:8px;text-align:left}
@@ -106,16 +110,16 @@
         <label class="fld">
           <span class="lbl">WiFi di bordo</span>
           <div class="seg" id="seg-wifi">
-            <label><input type="radio" name="WiFi" value="Funzionante">Funzionante</label>
-            <label><input type="radio" name="WiFi" value="NON funzionante">Non funzionante</label>
+            <label class="ok"><input type="radio" name="WiFi" value="Funzionante">Funzionante</label>
+            <label class="no"><input type="radio" name="WiFi" value="NON funzionante">Non funzionante</label>
           </div>
         </label>
 
         <label class="fld">
           <span class="lbl">Sistema video di bordo</span>
           <div class="seg" id="seg-video">
-            <label><input type="radio" name="Sistema video" value="Funzionante">Funzionante</label>
-            <label><input type="radio" name="Sistema video" value="NON funzionante">Non funzionante</label>
+            <label class="ok"><input type="radio" name="Sistema video" value="Funzionante">Funzionante</label>
+            <label class="no"><input type="radio" name="Sistema video" value="NON funzionante">Non funzionante</label>
           </div>
         </label>
 
@@ -175,10 +179,9 @@
   function wireSeg(boxId){
     const box=document.getElementById(boxId);
     box.addEventListener("change",()=>{
-      box.querySelectorAll("label").forEach(l=>{l.classList.remove("on-ok","on-bad")});
+      box.querySelectorAll("label").forEach(l=>{l.classList.remove("sel")});
       const sel=box.querySelector("input:checked");
-      if(!sel) return;
-      sel.closest("label").classList.add(sel.value.startsWith("NON")?"on-bad":"on-ok");
+      if(sel) sel.closest("label").classList.add("sel");
     });
   }
   wireSeg("seg-wifi"); wireSeg("seg-video");
