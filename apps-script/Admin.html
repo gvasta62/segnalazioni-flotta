@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<base target="_top">
+<meta charset="UTF-8">
+<style>
+  :root{--fs-red:#a3173b;--fs-red-dark:#7d0f2c;--ink:#1f2430;--muted:#6b7280;
+        --line:#e2e5ea;--bg:#f4f5f7;--ok:#1e8e4e;--warn:#b8860b;--pend:#6b7280}
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:var(--bg);color:var(--ink)}
+  header{background:linear-gradient(135deg,var(--fs-red),var(--fs-red-dark));color:#fff;padding:16px 20px}
+  header h1{margin:0;font-size:18px}
+  header .sub{font-size:12px;opacity:.9}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px}
+  .tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .tab{padding:9px 16px;border:1px solid var(--line);background:#fff;border-radius:999px;cursor:pointer;font-size:14px}
+  .tab.active{background:var(--fs-red);color:#fff;border-color:var(--fs-red);font-weight:600}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+  .row1{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+  .badge{font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;white-space:nowrap}
+  .b-pending{background:#eef0f3;color:var(--pend)}
+  .b-lav{background:#fdf3df;color:var(--warn)}
+  .b-chiuso{background:#e9f7ee;color:var(--ok)}
+  .ns{font-size:20px;font-weight:700}
+  .meta{font-size:13px;color:var(--muted);margin-top:2px}
+  .desc{margin:10px 0;font-size:14px;white-space:pre-wrap}
+  .kv{font-size:13px;color:#374151;margin:3px 0}
+  .kv b{color:var(--ink)}
+  .flags span{display:inline-block;font-size:12px;padding:2px 8px;border-radius:6px;margin-right:6px}
+  .f-ok{background:#e9f7ee;color:var(--ok)} .f-no{background:#fdecec;color:#c0392b}
+  .actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+  button.act{border:0;border-radius:9px;padding:9px 14px;font-size:14px;font-weight:600;cursor:pointer;color:#fff}
+  .a-take{background:#b8860b} .a-close{background:var(--ok)} .a-link{background:#1a73e8}
+  a.linkbtn{background:#1a73e8;color:#fff;text-decoration:none;border-radius:9px;padding:9px 14px;font-size:14px;font-weight:600}
+  .empty{text-align:center;color:var(--muted);padding:40px}
+  .loading{text-align:center;color:var(--muted);padding:30px}
+  /* statistiche */
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center}
+  .stat .n{font-size:30px;font-weight:800;color:var(--fs-red-dark)}
+  .stat .l{font-size:12px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
+  .stat .t{font-size:13px;color:#374151;margin-top:8px}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden}
+  th,td{padding:10px 12px;border-bottom:1px solid var(--line);font-size:14px;text-align:left}
+  th{background:#f8f9fb;font-size:12px;text-transform:uppercase;color:var(--muted)}
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:16px}
+  .overlay.on{display:flex}
+  .modal{background:#fff;border-radius:14px;padding:20px;max-width:480px;width:100%}
+  .modal h3{margin:0 0 4px;color:var(--fs-red-dark)}
+  .modal p{margin:0 0 12px;font-size:13px;color:var(--muted)}
+  .modal textarea{width:100%;min-height:110px;padding:10px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;font-size:15px}
+  .modal .mbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+  .modal button{border:0;border-radius:9px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer}
+  .m-cancel{background:#eef0f3;color:#374151} .m-ok{background:var(--fs-red);color:#fff}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1f2430;color:#fff;
+         padding:12px 20px;border-radius:10px;font-size:14px;display:none;z-index:50}
+</style>
+</head>
+<body>
+  <header>
+    <h1>🚍 Gestione segnalazioni — Flotta Freccialink &amp; The Mall</h1>
+    <div class="sub">Pannello riservato</div>
+  </header>
+
+  <div class="wrap">
+    <div class="tabs">
+      <div class="tab active" data-f="aperte" onclick="setTab('aperte')">Da lavorare</div>
+      <div class="tab" data-f="tutte" onclick="setTab('tutte')">Tutte</div>
+      <div class="tab" data-f="stat" onclick="setTab('stat')">📊 Statistiche</div>
+      <div class="tab" onclick="ricarica()" style="margin-left:auto">↻ Aggiorna</div>
+    </div>
+
+    <div id="list"><div class="loading">Caricamento…</div></div>
+    <div id="statView" style="display:none"></div>
+  </div>
+
+  <!-- modal -->
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h3 id="mTitle"></h3>
+      <p id="mHint"></p>
+      <textarea id="mText" placeholder="Scrivi qui…"></textarea>
+      <div class="mbtns">
+        <button class="m-cancel" onclick="closeModal()">Annulla</button>
+        <button class="m-ok" id="mConfirm">Conferma</button>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+<script>
+  var DATI = [];
+  var TAB = 'aperte';
+
+  function ricarica(){
+    document.getElementById('list').innerHTML = '<div class="loading">Caricamento…</div>';
+    google.script.run.withSuccessHandler(function(d){ DATI = d || []; render(); })
+                     .withFailureHandler(function(e){ toast('Errore: '+e.message); })
+                     .getSegnalazioni();
+  }
+
+  function setTab(t){
+    TAB = t;
+    document.querySelectorAll('.tab[data-f]').forEach(function(el){
+      el.classList.toggle('active', el.getAttribute('data-f')===t);
+    });
+    if(t==='stat'){ renderStat(); }
+    else { document.getElementById('statView').style.display='none';
+           document.getElementById('list').style.display='block'; render(); }
+  }
+
+  function render(){
+    var list = document.getElementById('list');
+    var rows = DATI;
+    if(TAB==='aperte') rows = DATI.filter(function(r){ return r.stato!=='Chiuso'; });
+    if(!rows.length){ list.innerHTML = '<div class="empty">Nessuna segnalazione.</div>'; return; }
+    list.innerHTML = rows.map(cardHtml).join('');
+  }
+
+  function badge(stato){
+    if(stato==='Chiuso') return '<span class="badge b-chiuso">Chiuso</span>';
+    if(stato==='In lavorazione') return '<span class="badge b-lav">In lavorazione</span>';
+    return '<span class="badge b-pending">Pending</span>';
+  }
+  function flag(label,val){
+    if(!val) return '<span>'+label+': n/d</span>';
+    var ok = String(val).toLowerCase().indexOf('non')<0;
+    return '<span class="'+(ok?'f-ok':'f-no')+'">'+label+': '+val+'</span>';
+  }
+  function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function cardHtml(r){
+    var h = '<div class="card">'
+      + '<div class="row1"><div>'
+      +   '<div class="ns">'+esc(r.flotta)+' · n. '+esc(r.numeroSociale)+'</div>'
+      +   '<div class="meta">'+esc(r.data)+' — segnalato da '+esc(r.email)+'</div>'
+      + '</div>'+badge(r.stato)+'</div>'
+      + '<div class="desc">'+esc(r.descrizione)+'</div>'
+      + '<div class="kv"><b>Dove intercettarlo:</b> '+esc(r.dove)+'</div>'
+      + '<div class="flags" style="margin:8px 0">'+flag('WiFi',r.wifi)+flag('Video',r.video)+'</div>';
+    if(r.stato==='In lavorazione' || r.stato==='Chiuso'){
+      h += '<div class="kv"><b>Presa in carico:</b> '+esc(r.dataPic)+'</div>';
+      if(r.descrLav) h += '<div class="kv"><b>Lavorazione:</b> '+esc(r.descrLav)+'</div>';
+    }
+    if(r.stato==='Chiuso'){
+      h += '<div class="kv"><b>Conclusa:</b> '+esc(r.dataFine)+'</div>';
+      if(r.riepilogo) h += '<div class="kv"><b>Intervento:</b> '+esc(r.riepilogo)+'</div>';
+    }
+    h += '<div class="actions">';
+    if(r.allegati) h += '<a class="linkbtn" target="_blank" href="'+r.allegati+'">📎 Allegati</a>';
+    if(r.stato==='Pending')
+      h += '<button class="act a-take" onclick="openTake(\''+r.id+'\')">Prendi in carico</button>';
+    if(r.stato!=='Chiuso')
+      h += '<button class="act a-close" onclick="openClose(\''+r.id+'\')">Chiudi</button>';
+    h += '</div></div>';
+    return h;
+  }
+
+  // ---- modali azioni ----
+  var pendingAction = null;
+  function openTake(id){
+    showModal('Prendi in carico', 'Descrivi cosa stai facendo / cosa hai riscontrato.', '', function(txt){
+      run('prendiInCarico', id, txt, 'Presa in carico registrata');
+    });
+  }
+  function openClose(id){
+    showModal('Chiudi segnalazione', 'Inserisci il riepilogo dell\'intervento effettuato.', '', function(txt){
+      run('chiudiSegnalazione', id, txt, 'Segnalazione chiusa');
+    });
+  }
+  function showModal(title, hint, val, cb){
+    document.getElementById('mTitle').textContent = title;
+    document.getElementById('mHint').textContent = hint;
+    document.getElementById('mText').value = val;
+    pendingAction = cb;
+    document.getElementById('overlay').classList.add('on');
+    document.getElementById('mText').focus();
+  }
+  function closeModal(){ document.getElementById('overlay').classList.remove('on'); pendingAction=null; }
+  document.getElementById('mConfirm').onclick = function(){
+    var txt = document.getElementById('mText').value.trim();
+    if(!txt){ document.getElementById('mText').focus(); return; }
+    var cb = pendingAction; closeModal(); if(cb) cb(txt);
+  };
+
+  function run(fn, id, txt, okMsg){
+    toast('Salvataggio…');
+    google.script.run
+      .withSuccessHandler(function(){ toast(okMsg); ricarica(); })
+      .withFailureHandler(function(e){ toast('Errore: '+e.message); })
+      [fn](id, txt);
+  }
+
+  // ---- statistiche ----
+  function renderStat(){
+    document.getElementById('list').style.display='none';
+    var sv = document.getElementById('statView');
+    sv.style.display='block';
+    sv.innerHTML = '<div class="loading">Calcolo statistiche…</div>';
+    google.script.run.withSuccessHandler(function(s){
+      var cards = ''
+        + statCard(s.totali,'Totali','')
+        + statCard(s.pending,'Pending','')
+        + statCard(s.lavorazione,'In lavorazione','')
+        + statCard(s.chiuso,'Chiuse','');
+      var periods = ''
+        + statCard(s.settimana.count,'Questa settimana','Tempo medio: '+s.settimana.tempoMedio)
+        + statCard(s.mese.count,'Questo mese','Tempo medio: '+s.mese.tempoMedio)
+        + statCard(s.anno.count,'Quest\'anno','Tempo medio: '+s.anno.tempoMedio);
+      var tbl = '<table><thead><tr><th>Mese</th><th>Segnalazioni</th><th>Tempo medio risoluzione</th></tr></thead><tbody>'
+        + (s.perMese.length ? s.perMese.map(function(m){
+            return '<tr><td>'+m.mese+'</td><td>'+m.count+'</td><td>'+m.tempoMedio+'</td></tr>'; }).join('')
+            : '<tr><td colspan="3" style="color:#6b7280">Nessun dato</td></tr>')
+        + '</tbody></table>';
+      sv.innerHTML = '<div class="stat-grid">'+cards+'</div>'
+        + '<h3 style="margin:6px 0 10px">Per periodo</h3>'
+        + '<div class="stat-grid">'+periods+'</div>'
+        + '<h3 style="margin:18px 0 10px">Andamento mensile (ultimi 12 mesi)</h3>'+tbl;
+    }).withFailureHandler(function(e){ sv.innerHTML='<div class="empty">Errore: '+e.message+'</div>'; })
+      .getStatistiche();
+  }
+  function statCard(n,l,t){
+    return '<div class="stat"><div class="n">'+n+'</div><div class="l">'+l+'</div>'
+         + (t?'<div class="t">'+t+'</div>':'')+'</div>';
+  }
+
+  // ---- toast ----
+  var toastT;
+  function toast(msg){
+    var el=document.getElementById('toast'); el.textContent=msg; el.style.display='block';
+    clearTimeout(toastT); toastT=setTimeout(function(){ el.style.display='none'; }, 2600);
+  }
+
+  ricarica();
+</script>
+</body>
+</html>

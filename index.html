@@ -44,6 +44,8 @@
   .btn:disabled{opacity:.55;cursor:default}
   .note{font-size:12px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.5}
   .hp{position:absolute;left:-9999px;top:-9999px}
+  .err{background:#fdecec;color:#c0392b;border:1px solid #f3b6b6;border-radius:10px;
+       padding:12px;font-size:14px;margin-bottom:14px;display:none}
 </style>
 </head>
 <body>
@@ -53,16 +55,9 @@
   </header>
 
   <div class="wrap">
-    <form id="segForm" action="https://formsubmit.co/g.vasta@fsbusitalia.it"
-          method="POST" enctype="multipart/form-data">
+    <div class="err" id="errBox"></div>
+    <form id="segForm" autocomplete="on">
 
-      <!-- ===== Campi tecnici FormSubmit (non visibili) ===== -->
-      <input type="hidden" name="_subject" id="_subject" value="Segnalazione anomalia flotta">
-      <input type="hidden" name="_cc" value="r.ocello@fsbusitalia.it">
-      <input type="hidden" name="_template" value="table">
-      <input type="hidden" name="_captcha" value="false">
-      <input type="hidden" name="_autoresponse" id="_autoresponse" value="">
-      <input type="hidden" name="_next" value="https://gvasta62.github.io/segnalazioni-flotta/grazie.html">
       <!-- honeypot anti-spam -->
       <input type="text" name="_honey" class="hp" tabindex="-1" autocomplete="off">
 
@@ -74,7 +69,7 @@
 
         <label class="fld">
           <span class="lbl">Flotta <span class="req">*</span></span>
-          <select name="Flotta" required>
+          <select name="Flotta" id="flotta" required>
             <option value="" disabled selected>— Seleziona —</option>
             <option value="Freccialink">Freccialink</option>
             <option value="The Mall">The Mall</option>
@@ -83,28 +78,28 @@
 
         <label class="fld">
           <span class="lbl">Numero sociale del mezzo <span class="req">*</span></span>
-          <input type="text" name="Numero sociale" inputmode="numeric"
+          <input type="text" name="Numero sociale" id="numeroSociale" inputmode="numeric"
                  placeholder="es. 14025" autocomplete="off" required>
         </label>
 
         <label class="fld">
           <span class="lbl">Dove è possibile intercettare il mezzo <span class="req">*</span></span>
           <div class="hintline">Linea, deposito, città o ultima posizione nota</div>
-          <input type="text" name="Dove intercettare il mezzo"
+          <input type="text" name="Dove intercettare il mezzo" id="dove"
                  placeholder="es. Linea Firenze–Outlet, deposito di Osmannoro…" required>
         </label>
 
         <label class="fld">
           <span class="lbl">La tua email (segnalatore) <span class="req">*</span></span>
           <div class="hintline">Riceverai una copia di riepilogo della segnalazione</div>
-          <input type="email" name="email" placeholder="nome.cognome@fsbusitalia.it" required>
+          <input type="email" name="email" id="email" placeholder="nome.cognome@fsbusitalia.it" required>
         </label>
       </div>
 
       <div class="card">
         <label class="fld">
           <span class="lbl">Descrizione dell'anomalia <span class="req">*</span></span>
-          <textarea name="Descrizione anomalia"
+          <textarea name="Descrizione anomalia" id="descrizione"
             placeholder="Descrivi il guasto o l'anomalia riscontrata…" required></textarea>
         </label>
 
@@ -144,6 +139,13 @@
   </div>
 
 <script>
+  // =====================================================================
+  //  INCOLLA QUI l'URL del deployment "Pubblico" di Apps Script
+  //  (Distribuisci › Nuova distribuzione › App web › "Chiunque").
+  //  Termina con /exec
+  // =====================================================================
+  const SCRIPT_URL = "INCOLLA_QUI_URL_EXEC_PUBBLICO";
+
   // ---------- Data/ora automatica ----------
   const now = new Date();
   const tsHuman = now.toLocaleString("it-IT",{
@@ -159,8 +161,7 @@
       box.querySelectorAll("label").forEach(l=>{l.classList.remove("on-ok","on-bad")});
       const sel=box.querySelector("input:checked");
       if(!sel) return;
-      const lbl=sel.closest("label");
-      lbl.classList.add(sel.value.startsWith("NON")?"on-bad":"on-ok");
+      sel.closest("label").classList.add(sel.value.startsWith("NON")?"on-bad":"on-ok");
     });
   }
   wireSeg("seg-wifi"); wireSeg("seg-video");
@@ -168,101 +169,107 @@
   // ---------- Elenco file selezionati ----------
   const fileInput=document.getElementById("files");
   const fileList=document.getElementById("fileList");
-  fileInput.addEventListener("change",()=>renderFileList(fileInput.files));
-  function renderFileList(files){
-    if(!files||!files.length){fileList.textContent="";return;}
-    const names=[...files].map(f=>"• "+f.name+" ("+Math.round(f.size/1024)+" KB)");
-    fileList.innerHTML=names.join("<br>");
-  }
+  fileInput.addEventListener("change",()=>{
+    const f=fileInput.files;
+    fileList.innerHTML = f.length
+      ? [...f].map(x=>"• "+x.name+" ("+Math.round(x.size/1024)+" KB)").join("<br>") : "";
+  });
 
   // ---------- Compressione immagini lato browser ----------
   const MAX_SIDE=1600, JPEG_Q=0.72;
   function compressImage(file){
     return new Promise((resolve)=>{
       if(!file.type.startsWith("image/")){resolve(file);return;}
-      const img=new Image();
-      const url=URL.createObjectURL(file);
+      const img=new Image(); const url=URL.createObjectURL(file);
       img.onload=()=>{
-        let{width:w,height:h}=img;
-        if(Math.max(w,h)>MAX_SIDE){
-          const s=MAX_SIDE/Math.max(w,h); w=Math.round(w*s); h=Math.round(h*s);
-        }
-        const c=document.createElement("canvas"); c.width=w; c.height=h;
+        let w=img.width,h=img.height;
+        if(Math.max(w,h)>MAX_SIDE){const s=MAX_SIDE/Math.max(w,h);w=Math.round(w*s);h=Math.round(h*s);}
+        const c=document.createElement("canvas");c.width=w;c.height=h;
         c.getContext("2d").drawImage(img,0,0,w,h);
         URL.revokeObjectURL(url);
         c.toBlob((blob)=>{
-          if(!blob||blob.size>=file.size){resolve(file);return;} // se non migliora, tieni l'originale
-          const nf=new File([blob],file.name.replace(/\.(png|webp|heic|heif)$/i,".jpg"),
-                            {type:"image/jpeg",lastModified:Date.now()});
-          resolve(nf);
+          if(!blob||blob.size>=file.size){resolve(file);return;}
+          resolve(new File([blob],file.name.replace(/\.(png|webp|heic|heif)$/i,".jpg"),
+                           {type:"image/jpeg"}));
         },"image/jpeg",JPEG_Q);
       };
       img.onerror=()=>{URL.revokeObjectURL(url);resolve(file);};
       img.src=url;
     });
   }
-
-  // ---------- Costruzione riepilogo per l'autoresponse ----------
-  function buildRecap(){
-    const v=(n)=>{const el=document.querySelector(`[name="${n}"]`);return el?el.value:"";};
-    const r=(n)=>{const el=document.querySelector(`[name="${n}"]:checked`);return el?el.value:"non indicato";};
-    return [
-      "Abbiamo ricevuto la tua segnalazione. Riepilogo:",
-      "",
-      "Data e ora: "+v("Data e ora"),
-      "Flotta: "+v("Flotta"),
-      "Numero sociale: "+v("Numero sociale"),
-      "Dove intercettarlo: "+v("Dove intercettare il mezzo"),
-      "WiFi: "+r("WiFi"),
-      "Sistema video: "+r("Sistema video"),
-      "",
-      "Descrizione anomalia:",
-      v("Descrizione anomalia"),
-      "",
-      "Grazie per la collaborazione.",
-      "— Segnalazione Flotta Freccialink & The Mall"
-    ].join("\n");
+  function toBase64(file){
+    return new Promise((res,rej)=>{
+      const r=new FileReader();
+      r.onload=()=>res(String(r.result).split(",")[1]);
+      r.onerror=rej; r.readAsDataURL(file);
+    });
   }
 
-  // ---------- Submit: comprime, prepara campi, invia (POST classico) ----------
+  // ---------- Submit ----------
   const form=document.getElementById("segForm");
   const sendBtn=document.getElementById("sendBtn");
+  const errBox=document.getElementById("errBox");
   let submitting=false;
+  const val=id=>document.getElementById(id).value.trim();
+  const radio=n=>{const el=document.querySelector(`[name="${n}"]:checked`);return el?el.value:"";};
+  function showErr(m){errBox.textContent=m;errBox.style.display="block";window.scrollTo(0,0);}
 
   form.addEventListener("submit", async (e)=>{
-    if(submitting) return;            // evita doppio invio
     e.preventDefault();
+    if(submitting) return;
+    if(document.querySelector('[name="_honey"]').value) return;   // bot
     if(!form.reportValidity()) return;
+    if(SCRIPT_URL.indexOf("INCOLLA_QUI")===0){
+      showErr("Configurazione incompleta: manca l'URL del backend (SCRIPT_URL).");
+      return;
+    }
+    errBox.style.display="none";
+    submitting=true; sendBtn.disabled=true; sendBtn.textContent="Invio in corso…";
 
-    submitting=true;
-    sendBtn.disabled=true;
-    sendBtn.textContent="Invio in corso…";
-
-    // Oggetto dinamico
-    const flotta=document.querySelector('[name="Flotta"]').value;
-    const ns=document.querySelector('[name="Numero sociale"]').value;
-    document.getElementById("_subject").value=`Segnalazione anomalia ${flotta} — mezzo ${ns}`;
-    document.getElementById("_autoresponse").value=buildRecap();
-
-    // Compressione immagini
     try{
+      // allegati: comprimi + base64
+      const attachments=[];
       const files=[...fileInput.files];
       if(files.length){
-        const out=await Promise.all(files.map(compressImage));
-        const dt=new DataTransfer();
-        out.forEach(f=>dt.items.add(f));
-        fileInput.files=dt.files;
-        const total=[...fileInput.files].reduce((a,f)=>a+f.size,0);
+        const compressed=await Promise.all(files.map(compressImage));
+        let total=0;
+        for(const f of compressed){
+          const data=await toBase64(f);
+          total+=data.length*0.75;
+          attachments.push({name:f.name,mimeType:f.type||"image/jpeg",data});
+        }
         if(total>9.5*1024*1024){
-          alert("Le foto allegate superano ~10MB anche dopo l'ottimizzazione. "+
-                "Rimuovine qualcuna e riprova.");
-          submitting=false; sendBtn.disabled=false; sendBtn.textContent="Invia segnalazione";
-          return;
+          showErr("Le foto superano ~10MB anche dopo l'ottimizzazione. Rimuovine qualcuna e riprova.");
+          submitting=false; sendBtn.disabled=false; sendBtn.textContent="Invia segnalazione"; return;
         }
       }
-    }catch(err){ /* in caso di errore di compressione, invio comunque gli originali */ }
 
-    form.submit();   // invio classico: necessario per allegati + autoresponse
+      const payload={
+        dataOra: tsHuman,
+        flotta: val("flotta"),
+        numeroSociale: val("numeroSociale"),
+        doveIntercettare: val("dove"),
+        email: val("email"),
+        descrizione: val("descrizione"),
+        wifi: radio("WiFi"),
+        video: radio("Sistema video"),
+        attachments
+      };
+
+      await fetch(SCRIPT_URL,{
+        method:"POST",
+        mode:"no-cors",
+        headers:{"Content-Type":"text/plain;charset=utf-8"},
+        body: JSON.stringify(payload)
+      });
+
+      // con no-cors la risposta è opaca: l'avvenuto invio è confermato
+      // dalle email che il sistema spedisce subito dopo.
+      window.location.href="grazie.html";
+    }catch(err){
+      showErr("Invio non riuscito. Controlla la connessione e riprova.");
+      submitting=false; sendBtn.disabled=false; sendBtn.textContent="Invia segnalazione";
+    }
   });
 </script>
 </body>
